@@ -11,6 +11,7 @@ import (
 	// "html/template"
 
 	"github.com/fatih/structs"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"h12.me/html-query"
@@ -23,6 +24,8 @@ type WebOG struct {
 	Site_name   string
 	Createdtime string
 	Updatedtime string
+	Url         string
+	Hostname    string
 	images      []string // not exported
 }
 
@@ -32,14 +35,19 @@ func main() {
 	})
 
 	r := gin.Default()
+
+	r.Use(cors.Default())
+
 	r.LoadHTMLFiles("./raw.html")
 
 	r.GET("/", func(c *gin.Context) {
 		queryURL := c.Query("url")
 
 		if len(queryURL) == 0 {
-			c.HTML(200, "raw.html", gin.H{
-				"title": "URL property",
+			c.JSON(200, gin.H{
+				"code":    0,
+				"success": false,
+				"msg":     "Please input query string.",
 			})
 		}
 
@@ -76,15 +84,16 @@ func main() {
 			m := structs.Map(web)
 			m["Images"] = strings.Join(web.images, ",") // save images array
 
-			ok, err := client.HMSet(queryURL, m).Result()
-			checkError(err)
+			go func() {
+				_, err1 := client.HMSet(queryURL, m).Result()
+				checkError(err1)
 
-			ok2, err := client.PExpire(queryURL, time.Hour*24).Result()
-			if err != nil {
-				checkError(err)
-			}
+				_, err2 := client.PExpire(queryURL, time.Hour).Result()
+				checkError(err2)
 
-			fmt.Println("Set redis success", ok, ok2)
+				fmt.Println("Set redis success")
+			}()
+
 			c.JSON(200, m)
 
 		} else if err != nil {
