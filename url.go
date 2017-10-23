@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -52,7 +53,6 @@ func main() {
 		}
 
 		result, err := client.HGetAll(queryURL).Result()
-		fmt.Print(err, "\n")
 		if len(result) == 0 {
 			rsp := getResponse(queryURL)
 			defer rsp.Close()
@@ -62,9 +62,18 @@ func main() {
 
 			web := &WebOG{Createdtime: time.Now().String(), Updatedtime: time.Now().String()}
 			root.Head().Children(expr.Meta).For(func(item *query.Node) {
-				if item.Attr("property", `og:(.*?)`) != nil {
+				checkRes := checkProperty(web, item.Attr("property"))
+
+				if item.Attr("property", `og:(.*?)`) != nil || checkRes {
 					property := item.Attr("property")
-					pureProperty := (*property)[3:]
+					pureProperty := ""
+
+					if checkRes {
+						pureProperty = *property
+					} else {
+						pureProperty = (*property)[3:]
+					}
+
 					content := item.Attr("content")
 
 					switch pureProperty {
@@ -80,6 +89,27 @@ func main() {
 					}
 				}
 			})
+
+			// default title
+			if len(web.Title) == 0 {
+				title := *root.Head().Title().AllText()
+				web.Title = title
+			}
+
+			// default images, use first one
+			if len(web.images) == 0 {
+				imgURL := *root.Img().Attr("src")
+
+				if strings.Index(imgURL, "http") == 0 {
+					web.images = append(web.images, imgURL)
+				} else {
+					u, _ := url.Parse(imgURL)
+					baseu, _ := url.Parse(queryURL)
+
+					web.images = append(web.images, baseu.ResolveReference(u).String())
+				}
+
+			}
 
 			m := structs.Map(web)
 			m["Images"] = strings.Join(web.images, ",") // save images array
@@ -113,6 +143,16 @@ func getResponse(url string) io.ReadCloser {
 	resp, err := http.Get(url)
 	checkError(err)
 	return resp.Body
+}
+
+func checkProperty(webObj *WebOG, key *string) bool {
+	if key == nil {
+		return false
+	}
+	k := strings.Title(*key)
+	structFieldValue := reflect.ValueOf(webObj).Elem().FieldByName(k)
+
+	return structFieldValue.IsValid()
 }
 
 func setProperty(webObj *WebOG, key string, value interface{}) error {
