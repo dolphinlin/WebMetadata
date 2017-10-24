@@ -78,7 +78,14 @@ func main() {
 
 					switch pureProperty {
 					case "image":
-						(*web).images = append((*web).images, *content)
+						if strings.Index(*content, "http") == 0 {
+							web.images = append(web.images, *content)
+						} else {
+							u, _ := url.Parse(*content)
+							baseu, _ := url.Parse(queryURL)
+
+							web.images = append(web.images, baseu.ResolveReference(u).String())
+						}
 
 					default:
 						err := setProperty(web, pureProperty, *content)
