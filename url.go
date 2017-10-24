@@ -62,10 +62,15 @@ func main() {
 
 			web := &WebOG{Createdtime: time.Now().String(), Updatedtime: time.Now().String()}
 			root.Head().Children(expr.Meta).For(func(item *query.Node) {
-				checkRes := checkProperty(web, item.Attr("property"))
+				checkRes := checkProperty(web, item.Attr("name"))
 
-				if item.Attr("property", `og:(.*?)`) != nil || checkRes {
+				if item.Head(expr.Or(expr.Attr("property", `og:(.*?)`), expr.Attr("name", ``))) != nil || checkRes {
 					property := item.Attr("property")
+
+					if property == nil {
+						property = item.Attr("name")
+					}
+
 					pureProperty := ""
 
 					if checkRes {
@@ -105,15 +110,17 @@ func main() {
 
 			// default images, use first one
 			if len(web.images) == 0 {
-				imgURL := *root.Img().Attr("src")
+				imgURL := root.Img().Attr("src")
 
-				if strings.Index(imgURL, "http") == 0 {
-					web.images = append(web.images, imgURL)
-				} else {
-					u, _ := url.Parse(imgURL)
-					baseu, _ := url.Parse(queryURL)
+				if imgURL != nil {
+					if strings.Index(*imgURL, "http") == 0 {
+						web.images = append(web.images, *imgURL)
+					} else {
+						u, _ := url.Parse(*imgURL)
+						baseu, _ := url.Parse(queryURL)
 
-					web.images = append(web.images, baseu.ResolveReference(u).String())
+						web.images = append(web.images, baseu.ResolveReference(u).String())
+					}
 				}
 
 			}
