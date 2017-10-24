@@ -64,7 +64,7 @@ func main() {
 			root.Head().Children(expr.Meta).For(func(item *query.Node) {
 				checkRes := checkProperty(web, item.Attr("name"))
 
-				if item.Head(expr.Or(expr.Attr("property", `og:(.*?)`), expr.Attr("name", ``))) != nil || checkRes {
+				if item.Attr("property", "og:(.*?)") != nil || checkRes {
 					property := item.Attr("property")
 
 					if property == nil {
@@ -163,8 +163,13 @@ func checkProperty(webObj *WebOG, key *string) bool {
 	if key == nil {
 		return false
 	}
+
 	k := strings.Title(*key)
 	structFieldValue := reflect.ValueOf(webObj).Elem().FieldByName(k)
+
+	if !structFieldValue.CanAddr() {
+		return false
+	}
 
 	return structFieldValue.IsValid()
 }
