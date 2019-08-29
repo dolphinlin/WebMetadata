@@ -9,14 +9,15 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
 	// "html/template"
 
 	"github.com/fatih/structs"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
-	"h12.me/html-query"
-	expr "h12.me/html-query/expr"
+	query "h12.io/html-query"
+	expr "h12.io/html-query/expr"
 )
 
 type WebOG struct {
